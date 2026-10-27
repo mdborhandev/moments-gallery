@@ -9,9 +9,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css?v=20261027-2" />
+    <link rel="stylesheet" href="style.css?v=20261027-4" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exifr/7.1.3/lite.umd.js" defer></script>
-    <script src="script.js?v=20261027-2" defer></script>
+    <script src="script.js?v=20261027-4" defer></script>
   </head>
   <body>
     <section id="login" class="login-screen">
@@ -66,12 +66,19 @@
             <select id="so" aria-label="Sort photos"><option value="new">Newest first</option><option value="old">Oldest first</option><option value="up">Recently added</option><option value="name">Name A–Z</option></select>
             <button id="clr" class="clear-button">Clear filters</button>
           </div>
+          <div class="browse-tools">
+            <button id="recent" class="browse-chip">◷ <span>Added in the last 30 days</span></button>
+            <button id="random" class="browse-chip" title="Open a random photo">✧ <span>Surprise me</span></button>
+            <span class="browse-spacer"></span>
+            <span id="page-count" class="page-count"></span>
+            <button id="prev-page" class="page-button" aria-label="Previous page">←</button>
+            <button id="next-page" class="page-button" aria-label="Next page">→</button>
+          </div>
         </section>
 
         <section class="gallery-section" aria-label="Photo gallery">
           <div id="grid" class="photo-grid"></div>
           <div id="empty" class="empty-state" hidden></div>
-          <div id="more" class="load-more-sentinel" aria-hidden="true"></div>
         </section>
       </main>
 

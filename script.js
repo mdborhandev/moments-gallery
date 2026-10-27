@@ -1,5 +1,6 @@
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-let db,P=[],L=[],sel=new Set(),cur=-1,shown=0,tl=false,selMode=false,favOnly=false,fails=0,lockUntil=0;
+let db,P=[],L=[],sel=new Set(),cur=-1,shown=0,page=0,tl=false,selMode=false,favOnly=false,recentOnly=false,fails=0,lockUntil=0;
+const PAGE_SIZE=72;
 const urls=new Map(),MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
 const hex=b=>[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
@@ -44,20 +45,24 @@ $('#rs').onclick=()=>scan();
 const boot=()=>scan();
 async function scan(){toast('Looking for photos\u2026');const out=[];
  try{await list(out)}catch(e){return toast('Could not read the photos folder. Open this page through a local server.')}
- const have=new Map(P.map(p=>[p.id,p])),seen=new Set(out);let n=0,d=0,bad=0;
- for(const [i,path] of out.entries()){if(have.has(path))continue;
-  if((n+bad)%5===0)toast(`Reading photo ${i+1} of ${out.length}\u2026`);
-  try{const resp=await fetch(encodeURI(path));if(!resp.ok)throw 0;const f=await resp.blob(),name=path.split('/').pop(),mt=+new Date(resp.headers.get('Last-Modified'))||Date.now();
-   const h=await sha(await f.arrayBuffer()),dup=P.some(p=>p.hash===h&&p.id!==path&&seen.has(p.id)&&!p.dup);
-   const bmp=await createImageBitmap(f),k=480/Math.max(bmp.width,bmp.height,480),c=document.createElement('canvas');
-   c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
-   const thumb=await new Promise(r=>c.toBlob(r,'image/jpeg',.8));let ex={};
-   try{ex=await exifr.parse(f)||{}}catch(_){}
-   const p={tags:[],place:'',event:'',notes:'',fav:false,uploadedAt:Date.now(),id:path,name,hash:h,thumb,type:f.type||'image/jpeg',size:f.size,mtime:mt,w:bmp.width,h:bmp.height,
-    takenAt:ex.DateTimeOriginal?+new Date(ex.DateTimeOriginal):mt,camera:[ex.Make,ex.Model].filter(Boolean).join(' ').trim(),
-    lat:ex.latitude??null,lon:ex.longitude??null,dup};
-   if(dup){p.hidden=true;d++}
-   await save(p);P=P.filter(x=>x.id!==path);P.push(p);n++}catch(_){bad++}}
+const have=new Map(P.map(p=>[p.id,p])),seen=new Set(out),hashes=new Map(P.filter(p=>p.hash&&!p.dup).map(p=>[p.hash,p.id]));let n=0,d=0,bad=0,done=0;
+const pending=out.filter(path=>!have.has(path));let next=0;
+const worker=async()=>{while(next<pending.length){const path=pending[next++];
+ try{const resp=await fetch(encodeURI(path));if(!resp.ok)throw 0;const f=await resp.blob(),name=path.split('/').pop(),mt=+new Date(resp.headers.get('Last-Modified'))||Date.now();
+  const h=await sha(await f.arrayBuffer()),dup=hashes.has(h)&&hashes.get(h)!==path;
+  if(!dup)hashes.set(h,path);
+  const bmp=await createImageBitmap(f),k=360/Math.max(bmp.width,bmp.height,360),c=document.createElement('canvas');
+  c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);
+  const thumb=await new Promise(r=>c.toBlob(r,'image/jpeg',.72));let ex={};
+  try{ex=await exifr.parse(f)||{}}catch(_){}
+  const p={tags:[],place:'',event:'',notes:'',fav:false,uploadedAt:Date.now(),id:path,name,hash:h,thumb,type:f.type||'image/jpeg',size:f.size,mtime:mt,w:bmp.width,h:bmp.height,
+   takenAt:ex.DateTimeOriginal?+new Date(ex.DateTimeOriginal):mt,camera:[ex.Make,ex.Model].filter(Boolean).join(' ').trim(),
+   lat:ex.latitude??null,lon:ex.longitude??null,dup};
+  if(dup){p.hidden=true;d++}
+  await save(p);have.set(path,p);n++}catch(_){bad++}
+ done++;if(done%20===0||done===out.length)toast(`Preparing your collection · ${done} of ${out.length}`)}};
+ const workers=navigator.deviceMemory&&navigator.deviceMemory<=4?2:4;
+ await Promise.all(Array.from({length:Math.min(workers,pending.length)},worker));
  if(out.length)for(const p of P.filter(p=>!seen.has(p.id)))await rem(p.id);
  P=await all();filters();render();
  toast(`${P.filter(p=>!p.hidden).length} photos${n?`, ${n} new`:''}${d?`, ${d} duplicate${d>1?'s':''} hidden`:''}${bad?`, ${bad} unreadable`:''}`)}
@@ -68,29 +73,34 @@ function opts(id,label,vals,fmt=x=>x){const e=$('#'+id),v=e.value;e.innerHTML=`<
 function filters(){const u=a=>[...new Set(a)].filter(x=>x!==''&&x!=null);
  opts('fy','All years',u(P.map(p=>new Date(p.takenAt).getFullYear())).sort((a,b)=>b-a));
  opts('fm','All months',[...Array(12).keys()],m=>MN[m]);opts('fc','All cameras',u(P.map(p=>p.camera)).sort());opts('fe','All events',u(P.map(p=>p.event)).sort())}
-['q','fy','fm','fc','fe','d1','d2','so'].forEach(i=>$('#'+i).addEventListener('input',render));
+let searchTimer;
+['q','fy','fm','fc','fe','d1','d2','so'].forEach(i=>$('#'+i).addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(render,120)}));
 $('#ff').onclick=()=>{favOnly=!favOnly;$('#ff').classList.toggle('on',favOnly);render()};
-$('#clr').onclick=()=>{['q','fy','fm','fc','fe','d1','d2'].forEach(i=>$('#'+i).value='');favOnly=false;$('#ff').classList.remove('on');render()};
+$('#clr').onclick=()=>{['q','fy','fm','fc','fe','d1','d2'].forEach(i=>$('#'+i).value='');favOnly=false;recentOnly=false;$('#ff').classList.remove('on');$('#recent').classList.remove('is-active');render()};
 $('#vw').onclick=()=>{tl=!tl;$('#vw').textContent=tl?'Grid':'Timeline';render()};
+$('#recent').onclick=()=>{recentOnly=!recentOnly;$('#recent').classList.toggle('is-active',recentOnly);render()};
+$('#random').onclick=()=>{if(!L.length)return toast('Add or show photos to pick a surprise.');show(Math.floor(Math.random()*L.length))};
+$('#prev-page').onclick=()=>{if(page>0){page--;render(false);window.scrollTo({top:$('#grid').offsetTop-120,behavior:'smooth'})}};
+$('#next-page').onclick=()=>{if((page+1)*PAGE_SIZE<L.length){page++;render(false);window.scrollTo({top:$('#grid').offsetTop-120,behavior:'smooth'})}};
 function run(){const q=val('q').toLowerCase().split(/\s+/).filter(Boolean),y=val('fy'),m=val('fm'),c=val('fc'),ev=val('fe'),a=val('d1')?+new Date(val('d1')):0,z=val('d2')?+new Date(val('d2'))+864e5:1e15;
  const r=P.filter(p=>{if(p.hidden)return false;const d=new Date(p.takenAt);
-  if(y&&d.getFullYear()!=y||m!==''&&d.getMonth()!=m||c&&p.camera!==c||ev&&p.event!==ev||p.takenAt<a||p.takenAt>=z||favOnly&&!p.fav)return false;
+  if(y&&d.getFullYear()!=y||m!==''&&d.getMonth()!=m||c&&p.camera!==c||ev&&p.event!==ev||p.takenAt<a||p.takenAt>=z||favOnly&&!p.fav||recentOnly&&Date.now()-p.uploadedAt>30*864e5)return false;
   const hay=[p.name,p.place,p.event,p.notes,p.camera,...p.tags].join(' ').toLowerCase();return q.every(w=>hay.includes(w))});
  const s=val('so');r.sort((x,y)=>s==='old'?x.takenAt-y.takenAt:s==='up'?y.uploadedAt-x.uploadedAt:s==='name'?x.name.localeCompare(y.name):y.takenAt-x.takenAt);return r}
 
 // ---- grid
 const th=p=>{if(!urls.has(p.id))urls.set(p.id,URL.createObjectURL(p.thumb));return urls.get(p.id)};
-function render(){L=run();shown=0;$('#grid').innerHTML='';const T=P.filter(p=>!p.hidden).length;$('#count').textContent=`${L.length} of ${T} memor${T==1?'y':'ies'}`;
+function render(resetPage=true){L=run();if(resetPage)page=0;const pages=Math.max(1,Math.ceil(L.length/PAGE_SIZE));page=Math.min(page,pages-1);shown=0;$('#grid').innerHTML='';const T=P.filter(p=>!p.hidden).length;$('#count').textContent=`${T.toLocaleString()} ${T===1?'moment':'moments'}`;
+ $('#page-count').textContent=L.length?`Page ${page+1} of ${pages} · ${L.length.toLocaleString()} results`:'';$('#prev-page').disabled=page===0;$('#next-page').disabled=(page+1)*PAGE_SIZE>=L.length;
  const e=$('#empty');e.hidden=L.length>0;
  if(!L.length)e.innerHTML=P.length?'<h2>No moments match just yet.</h2><p>Try a different search or clear your filters to see the whole collection.</p>':'<h2>Your story starts here.</h2><p>Add your photos to the picture folder beside this page, then rescan to bring your moments in.</p><code>moments-gallery/pic/</code><p class="empty-hint">The <strong>pic</strong> folder is currently empty. JPG, PNG, WebP, GIF, AVIF, and BMP files are supported.</p>';
  more()}
 let lastKey='';
-function more(){const g=$('#grid'),end=Math.min(shown+60,L.length);if(!shown)lastKey='';let h='';
- for(let i=shown;i<end;i++){const p=L[i];
+function more(){const g=$('#grid'),start=page*PAGE_SIZE,end=Math.min(start+PAGE_SIZE,L.length);if(!start)lastKey='';let h='';
+ for(let i=start;i<end;i++){const p=L[i];
   if(tl&&val('so')!=='name'&&val('so')!=='up'){const d=new Date(p.takenAt),k=d.getFullYear()+'-'+d.getMonth();if(k!==lastKey){lastKey=k;h+=`<div class="mh">${MN[d.getMonth()]} ${d.getFullYear()}</div>`}}
-  h+=`<div class="card${sel.has(p.id)?' sel':''}" data-i="${i}" tabindex="0"><img loading="lazy" src="${th(p)}" width="${p.w}" height="${p.h}" alt="${esc(p.name)}"><span class="ck"></span>${p.fav?'<span class="fv">♥</span>':''}</div>`}
+  h+=`<div class="card${sel.has(p.id)?' sel':''}" data-i="${i}" tabindex="0"><img loading="lazy" decoding="async" src="${th(p)}" width="${p.w}" height="${p.h}" alt="${esc(p.name)}"><span class="ck"></span>${p.fav?'<span class="fv">♥</span>':''}<div class="card-caption"><span>${esc(p.event||p.place||p.name)}</span><time>${new Date(p.takenAt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}</time></div></div>`}
  g.insertAdjacentHTML('beforeend',h);shown=end}
-new IntersectionObserver(es=>{if(es[0].isIntersecting&&shown<L.length)more()},{rootMargin:'600px'}).observe($('#more'));
 $('#grid').onclick=e=>{const c=e.target.closest('.card');if(!c)return;const p=L[c.dataset.i];
  if(selMode){sel.has(p.id)?sel.delete(p.id):sel.add(p.id);c.classList.toggle('sel');bar()}else show(+c.dataset.i)};
 $('#grid').onkeydown=e=>{if(e.key==='Enter')e.target.click()};
@@ -122,6 +132,7 @@ $('#im').onclick=e=>e.target.classList.toggle('z');
 $('#cl').onclick=()=>{$('#lb').hidden=true;document.body.style.overflow='';render()};
 addEventListener('keydown',e=>{if($('#lb').hidden||/INPUT|TEXTAREA/.test(e.target.tagName))return;
  if(e.key==='ArrowRight')go(1);else if(e.key==='ArrowLeft')go(-1);else if(e.key==='Escape')$('#cl').click();else if(e.key==='+'||e.key==='z')$('#im').click()});
+addEventListener('keydown',e=>{if(e.key==='/'&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)&&$('#lb').hidden){e.preventDefault();$('#q').focus()}});
 $('#sv').onclick=async()=>{const p=L[cur];p.tags=$('#mt').value.split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);p.place=$('#mp').value.trim();p.event=$('#me').value.trim();p.notes=$('#mn').value.trim();
  if($('#md').value)p.takenAt=+new Date($('#md').value);await save(p);filters();toast('Saved')};
 $('#lf2').onclick=async()=>{const p=L[cur];p.fav=!p.fav;await save(p);$('#lf2').textContent=(p.fav?'♥':'♡')+' Favorite'};
