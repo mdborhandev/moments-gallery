@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141216">
+  <meta name="description" content="A little collection of our favorite moments, kept close to the heart.">
+  <title>Our Little Moments — a photo journal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=2">
+  <script src="script.js?v=3" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#home" aria-label="Our Little Moments home"><span class="brand-mark">♡</span><span>our little moments</span></a>
+    <a class="top-link" href="#gallery">The photo journal <span>↗</span></a>
+  </header>
+
+  <main id="home">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-line"></span> A collection made with love</p>
+        <h1 id="hero-title">Little moments,<br><em>forever ours.</em></h1>
+        <p class="hero-note">The ordinary days, the big smiles, and all the lovely things in between.</p>
+        <a class="hero-button" href="#gallery">Wander through our memories <span>↓</span></a>
+        <div class="hero-caption"><span class="caption-heart">♥</span> Every picture holds a piece of us.</div>
+      </div>
+      <div class="hero-art" aria-label="A few favorite snapshots">
+        <div class="sun-wash"></div>
+        <figure class="polaroid polaroid-back"><img src="pic/IMG-20251129-WA0011.jpg" alt="A moment together" fetchpriority="high"><figcaption>my favorite place</figcaption></figure>
+        <figure class="polaroid polaroid-front"><img src="pic/8b391e2df3a2ba6ab32cfd8fcffc0aa9.jpg" alt="A favorite memory" fetchpriority="high"><figcaption>just us ♡</figcaption></figure>
+        <span class="doodle doodle-one">✳</span><span class="doodle doodle-two">♡</span><span class="doodle doodle-three">✿</span>
+        <div class="tape"></div>
+      </div>
+      <div class="hero-bottom"><span>SCROLL A LITTLE</span><span class="scroll-line"></span><span>THERE’S SO MUCH TO REMEMBER</span></div>
+    </section>
+
+    <section id="gallery" class="gallery-section" aria-labelledby="gallery-title">
+      <div class="section-heading">
+        <div><p class="eyebrow"><span class="eyebrow-line"></span> The keepsake collection</p><h2 id="gallery-title">A thousand <em>tiny treasures</em></h2></div>
+        <p class="section-aside">Collected with love,<br>looked back on with a smile.</p>
+      </div>
+
+      <div class="gallery-toolbar">
+        <div class="filters" role="group" aria-label="Filter photos">
+          <button class="filter-button is-active" data-filter="all" type="button">All moments <span class="filter-count" id="all-count"></span></button>
+          <button class="filter-button" data-filter="favorites" type="button">♡ Favorites</button>
+          <label class="select-wrap"><span class="sr-only">Filter by year</span><select id="year-filter"><option value="all">Every year</option></select><span class="select-arrow">⌄</span></label>
+        </div>
+        <label class="search-box"><span aria-hidden="true">⌕</span><span class="sr-only">Search photos</span><input id="search-input" type="search" placeholder="Find a moment…" autocomplete="off"><kbd>Ctrl K</kbd></label>
+      </div>
+      <div class="view-toolbar">
+        <label class="sort-control">Sort <select id="sort-filter" aria-label="Sort photos"><option value="random">Random order</option><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Filename</option></select></label>
+        <div class="density-control" role="group" aria-label="Gallery density"><span>View</span><button type="button" data-density="roomy" class="density-button is-active" aria-label="Roomy photo grid" title="Roomy">▦</button><button type="button" data-density="compact" class="density-button" aria-label="Compact photo grid" title="Compact">▤</button></div>
+      </div>
+      <div class="gallery-meta"><span id="result-count">Looking for photos in pic/…</span><span class="gallery-actions"><span class="meta-decoration">♡ &nbsp; saved in our hearts</span><button id="choose-folder" class="folder-picker" type="button">Choose photo folder</button><input id="folder-input" type="file" accept="image/*" webkitdirectory directory multiple hidden></span></div>
+      <div id="photo-grid" class="photo-grid" aria-live="polite"></div>
+      <div id="empty-state" class="empty-state" hidden><span>♡</span><p>No moments found just yet.</p><button id="clear-filters" type="button">Show every photo</button></div>
+      <div class="load-more-wrap"><button id="load-more" class="load-more" type="button">Show a few more <span>↓</span></button></div>
+    </section>
+
+    <section class="closing-note"><span class="closing-heart">♡</span><p>Here’s to all the little things<br><em>that make life ours.</em></p><span class="closing-sparkle">✳</span></section>
+  </main>
+  <footer><a class="brand footer-brand" href="#home"><span class="brand-mark">♡</span><span>our little moments</span></a><span>A little love, kept forever.</span><a href="#home" class="back-top">Back to the top ↑</a></footer>
+
+  <dialog id="lightbox" class="lightbox" aria-label="Photo viewer">
+    <button class="lightbox-close" type="button" aria-label="Close photo viewer">×</button>
+    <button class="lightbox-nav lightbox-prev" type="button" aria-label="Previous photo">←</button>
+    <figure class="lightbox-figure"><img id="lightbox-image" alt=""><figcaption><span id="lightbox-caption"></span><span id="lightbox-index"></span></figcaption></figure>
+    <button class="lightbox-nav lightbox-next" type="button" aria-label="Next photo">→</button>
+    <button class="lightbox-favorite" type="button" aria-label="Save as favorite">♡</button>
+    <div class="lightbox-tools"><button id="slideshow-toggle" type="button">▶ Slideshow</button><a id="download-photo" download>↓ Download</a></div>
+  </dialog>
+</body>
+</html>
