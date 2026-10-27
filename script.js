@@ -18,17 +18,16 @@ const DEFAULT_PASSWORD = '4006';
 async function checkPw(v){const stored=ls.get('pwh')||await sha('gallery:'+DEFAULT_PASSWORD);return await sha('gallery:'+v)===stored}
 $('#lf').onsubmit=async e=>{e.preventDefault();
  if(Date.now()<lockUntil){$('#err').textContent='Too many attempts. Wait '+Math.ceil((lockUntil-Date.now())/1000)+'s.';return}
- if(await checkPw($('#pw').value)){fails=0;try{sessionStorage.setItem('ok',Date.now())}catch(e){}start()}
+ if(await checkPw($('#pw').value)){fails=0;start()}
  else{fails++;lockUntil=Date.now()+Math.min(2**fails,60)*1000;$('#err').textContent='Wrong password.';$('#pw').value=''}};
-$('#out').onclick=()=>{try{sessionStorage.removeItem('ok')}catch(e){}location.reload()};
+$('#out').onclick=()=>location.reload();
 $('#pwb').onclick=async()=>{const o=prompt('Current password');if(o===null)return;if(!await checkPw(o))return toast('Current password is wrong');
  const n=prompt('New password (6+ characters)');if(!n||n.length<6)return toast('Password not changed');ls.set('pwh',await sha('gallery:'+n));toast('Password changed')};
-$('#th').onclick=()=>{const d=document.documentElement,l=getComputedStyle(d).getPropertyValue('--bg').trim()==='#fff5f7';d.dataset.theme=l?'dark':'light';ls.set('theme',d.dataset.theme)};
+$('#th').onclick=()=>{const d=document.documentElement;d.dataset.theme=d.dataset.theme==='dark'?'light':'dark';ls.set('theme',d.dataset.theme)};
 if(ls.get('theme'))document.documentElement.dataset.theme=ls.get('theme');
 
 async function start(){$('#login').hidden=true;$('#app').hidden=false;await open();P=await all();filters();render();await boot();
  let t;const bump=()=>{clearTimeout(t);t=setTimeout(()=>$('#out').click(),30*60e3)};['click','keydown'].forEach(k=>addEventListener(k,bump));bump()}
-try{const s=sessionStorage.getItem('ok');if(s&&Date.now()-s<30*60e3)start()}catch(e){}
 
 // Photos live in ./pic next to this file (read-only, never modified).
 const IMG=/\.(jpe?g|png|webp|gif|avif|bmp)$/i;
