@@ -1,4 +1,5 @@
 # Keep personal gallery photos local.
+/pic.json
 /pic/*.[jJ][pP][gG]
 /pic/*.[jJ][pP][eE][gG]
 /pic/*.[pP][nN][gG]

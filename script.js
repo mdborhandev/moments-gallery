@@ -36,8 +36,10 @@ async function walk(dir,out){const r=await fetch(dir,{cache:'no-store'});if(!r.o
  for(const a of h.querySelectorAll('a[href]')){const raw=a.getAttribute('href');if(/^([?#\/.]|[a-z]+:)/i.test(raw))continue;const n=decodeURIComponent(raw);
   if(n.endsWith('/'))await walk(dir+raw,out);else if(IMG.test(n))out.push(dir+n)}}
 async function list(out){
- try{const r=await fetch('pic.json',{cache:'no-store'});if(r.ok){(await r.json()).filter(n=>IMG.test(n)).forEach(n=>out.push('pic/'+n));return}}catch(e){}
- await walk('pic/',out)}
+ let manifestLoaded=false;
+ try{const r=await fetch('pic.json',{cache:'no-store'});if(r.ok){(await r.json()).filter(n=>IMG.test(n)).forEach(n=>out.push('pic/'+n));manifestLoaded=true}}catch(e){}
+ try{await walk('pic/',out)}catch(e){if(!manifestLoaded)throw e}
+ out.splice(0,out.length,...new Set(out));return out}
 $('#rs').onclick=()=>scan();
 const boot=()=>scan();
 async function scan(){toast('Looking for photos\u2026');const out=[];
