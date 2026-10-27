@@ -14,7 +14,8 @@ const tx=(m,f)=>new Promise((ok,no)=>{const t=db.transaction('p',m),r=f(t.object
 const save=p=>tx('readwrite',s=>s.put(p)),rem=id=>tx('readwrite',s=>s.delete(id)),all=()=>tx('readonly',s=>s.getAll());
 
 // ---- auth (client-side only: a privacy gate, not real server security)
-async function checkPw(v){const stored=ls.get('pwh')||await sha('gallery:4006');return await sha('gallery:'+v)===stored}
+const DEFAULT_PASSWORD = '4006';
+async function checkPw(v){const stored=ls.get('pwh')||await sha('gallery:'+DEFAULT_PASSWORD);return await sha('gallery:'+v)===stored}
 $('#lf').onsubmit=async e=>{e.preventDefault();
  if(Date.now()<lockUntil){$('#err').textContent='Too many attempts. Wait '+Math.ceil((lockUntil-Date.now())/1000)+'s.';return}
  if(await checkPw($('#pw').value)){fails=0;try{sessionStorage.setItem('ok',Date.now())}catch(e){}start()}
@@ -29,15 +30,15 @@ async function start(){$('#login').hidden=true;$('#app').hidden=false;await open
  let t;const bump=()=>{clearTimeout(t);t=setTimeout(()=>$('#out').click(),30*60e3)};['click','keydown'].forEach(k=>addEventListener(k,bump));bump()}
 try{const s=sessionStorage.getItem('ok');if(s&&Date.now()-s<30*60e3)start()}catch(e){}
 
-// ---- photos live in ./photos next to this file (read-only, never modified)
+// Photos live in ./pic next to this file (read-only, never modified).
 const IMG=/\.(jpe?g|png|webp|gif|avif|bmp)$/i;
 async function walk(dir,out){const r=await fetch(dir,{cache:'no-store'});if(!r.ok)throw 0;
  const h=new DOMParser().parseFromString(await r.text(),'text/html');
  for(const a of h.querySelectorAll('a[href]')){const raw=a.getAttribute('href');if(/^([?#\/.]|[a-z]+:)/i.test(raw))continue;const n=decodeURIComponent(raw);
   if(n.endsWith('/'))await walk(dir+raw,out);else if(IMG.test(n))out.push(dir+n)}}
 async function list(out){
- try{const r=await fetch('photos.json',{cache:'no-store'});if(r.ok){(await r.json()).filter(n=>IMG.test(n)).forEach(n=>out.push('photos/'+n));return}}catch(e){}
- await walk('photos/',out)}
+ try{const r=await fetch('pic.json',{cache:'no-store'});if(r.ok){(await r.json()).filter(n=>IMG.test(n)).forEach(n=>out.push('pic/'+n));return}}catch(e){}
+ await walk('pic/',out)}
 $('#rs').onclick=()=>scan();
 const boot=()=>scan();
 async function scan(){toast('Looking for photos\u2026');const out=[];
@@ -80,7 +81,7 @@ function run(){const q=val('q').toLowerCase().split(/\s+/).filter(Boolean),y=val
 const th=p=>{if(!urls.has(p.id))urls.set(p.id,URL.createObjectURL(p.thumb));return urls.get(p.id)};
 function render(){L=run();shown=0;$('#grid').innerHTML='';const T=P.filter(p=>!p.hidden).length;$('#count').textContent=`${L.length} of ${T} memor${T==1?'y':'ies'}`;
  const e=$('#empty');e.hidden=L.length>0;
- if(!L.length)e.innerHTML=P.length?'<h2>No memories match</h2><p>Try fewer words or clear the filters.</p>':'<h2>No memories here yet</h2><p>Put your photos in the photos folder, then click Rescan.</p>';
+ if(!L.length)e.innerHTML=P.length?'<h2>No moments match just yet.</h2><p>Try a different search or clear your filters to see the whole collection.</p>':'<h2>Your story starts here.</h2><p>Add your photos to the picture folder beside this page, then rescan to bring your moments in.</p><code>moments-gallery/pic/</code><p class="empty-hint">The <strong>pic</strong> folder is currently empty. JPG, PNG, WebP, GIF, AVIF, and BMP files are supported.</p>';
  more()}
 let lastKey='';
 function more(){const g=$('#grid'),end=Math.min(shown+60,L.length);if(!shown)lastKey='';let h='';
