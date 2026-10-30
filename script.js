@@ -2,7 +2,9 @@ const PAGE_SIZE = 48;
 const SEARCH_PAGE = 60;
 const FAVORITES_KEY = 'our-little-moments-favorites';
 const DENSITY_KEY = 'our-little-moments-density';
+const NOTES_KEY = 'our-little-moments-notes';
 const MONTH_NAMES = new Intl.DateTimeFormat('en', { month: 'long' });
+const MONTH_SHORT = new Intl.DateTimeFormat('en', { month: 'short' });
 const FULL_DATE = new Intl.DateTimeFormat('en', { day: 'numeric', month: 'long', year: 'numeric' });
 
 function loadFavorites() {
@@ -14,13 +16,29 @@ function loadFavorites() {
   }
 }
 
+function loadNotes() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(NOTES_KEY) || '{}');
+    if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return {};
+    const notes = {};
+    Object.entries(saved).forEach(([name, text]) => {
+      if (typeof text === 'string' && text.trim()) notes[name] = text.trim();
+    });
+    return notes;
+  } catch {
+    return {};
+  }
+}
+
 const els = {
-  headerCount: document.querySelector('#header-count'),
-  headerAlbums: document.querySelector('#header-albums'),
+  navHome: document.querySelector('#nav-home'),
+  navFavorites: document.querySelector('#nav-favorites'),
+  navAlbumCount: document.querySelector('#nav-album-count'),
+  timeline: document.querySelector('#timeline'),
+  timelineSection: document.querySelector('.timeline-section'),
+  recentSection: document.querySelector('#recent-section'),
+  recentStrip: document.querySelector('#recent-strip'),
   favoriteCount: document.querySelector('#favorite-count'),
-  statPhotos: document.querySelector('#stat-photos'),
-  statAlbums: document.querySelector('#stat-albums'),
-  statSince: document.querySelector('#stat-since'),
   albumsSection: document.querySelector('#albums-section'),
   albumGrid: document.querySelector('#album-grid'),
   landingEmpty: document.querySelector('#landing-empty'),
@@ -56,15 +74,23 @@ const els = {
   lbClose: document.querySelector('.lb-close'),
   lbPrev: document.querySelector('.lb-prev'),
   lbNext: document.querySelector('.lb-next'),
+  noteEdit: document.querySelector('#note-edit'),
+  noteRemove: document.querySelector('#note-remove'),
+  noteText: document.querySelector('#note-text'),
+  noteForm: document.querySelector('#note-form'),
+  noteInput: document.querySelector('#note-input'),
+  noteCancel: document.querySelector('#note-cancel'),
 };
 
 let photos = [];
 let albumMap = new Map();
 let albumList = [];
 let favorites = loadFavorites();
+let notes = loadNotes();
 let currentAlbum = null;
 let lbList = [];
 let lbIndex = 0;
+let noteEditing = false;
 let slideshowTimer = null;
 let searchTimer = null;
 let searchResults = [];
@@ -130,6 +156,207 @@ function getAlbumData(id) {
   const album = albumMap.get(id);
   if (!album) return null;
   return { id, title: album.title, kicker: album.kicker, photos: album.photos, empty: 'No moments here yet.' };
+}
+
+/* ——— Notes ——— */
+
+function noteFor(name) {
+  return notes[name] || '';
+}
+
+function persistNotes() {
+  try {
+    localStorage.setItem(NOTES_KEY, JSON.stringify(notes));
+  } catch {
+    /* storage full or unavailable — keep the in-memory note */
+  }
+}
+
+function refreshNoteBadges() {
+  document.querySelectorAll('.photo-card').forEach(card => {
+    const badge = card.querySelector('.photo-note-badge');
+    if (badge) badge.hidden = !noteFor(card.dataset.name);
+  });
+}
+
+function syncNoteUI() {
+  const photo = lbList[lbIndex];
+  const hasPhoto = Boolean(photo);
+  const note = hasPhoto ? noteFor(photo.name) : '';
+  const editing = hasPhoto && noteEditing;
+
+  els.noteText.hidden = editing || !note;
+  els.noteText.textContent = note;
+  els.noteForm.hidden = !editing;
+  els.noteRemove.hidden = editing || !note;
+  els.noteEdit.hidden = editing;
+  els.noteEdit.textContent = note ? 'Edit note' : 'Add a note';
+}
+
+function startNoteEdit() {
+  const photo = lbList[lbIndex];
+  if (!photo) return;
+  noteEditing = true;
+  els.noteInput.value = noteFor(photo.name);
+  syncNoteUI();
+  els.noteInput.focus();
+  els.noteInput.setSelectionRange(els.noteInput.value.length, els.noteInput.value.length);
+}
+
+function stopNoteEdit() {
+  if (!noteEditing) return;
+  noteEditing = false;
+  syncNoteUI();
+}
+
+function saveNote() {
+  const photo = lbList[lbIndex];
+  if (!photo) return;
+  const text = els.noteInput.value.trim();
+  if (text) notes[photo.name] = text;
+  else delete notes[photo.name];
+  persistNotes();
+  noteEditing = false;
+  refreshNoteBadges();
+  syncNoteUI();
+  if (searchActive) runSearch();
+}
+
+function removeNote() {
+  const photo = lbList[lbIndex];
+  if (!photo) return;
+  delete notes[photo.name];
+  persistNotes();
+  noteEditing = false;
+  refreshNoteBadges();
+  syncNoteUI();
+  if (searchActive) runSearch();
+}
+
+/* ——— Timeline ——— */
+
+function makeTimelineMonth(album) {
+  const link = document.createElement('a');
+  link.className = 'timeline-month';
+  link.href = `#album/${encodeURIComponent(album.id)}`;
+  link.dataset.album = album.id;
+
+  const dot = document.createElement('span');
+  dot.className = 'timeline-dot';
+  dot.setAttribute('aria-hidden', 'true');
+
+  const name = document.createElement('span');
+  name.className = 'timeline-month-name';
+  name.textContent = album.id === 'undated'
+    ? 'Odds & ends'
+    : MONTH_SHORT.format(album.photos[0].date);
+
+  const count = document.createElement('span');
+  count.className = 'timeline-month-count';
+  count.textContent = album.photos.length.toLocaleString();
+
+  link.append(dot, name, count);
+  return link;
+}
+
+function renderTimeline() {
+  const fragment = document.createDocumentFragment();
+  const groups = new Map();
+  albumList.forEach(album => {
+    if (album.id === 'undated') return;
+    const year = album.id.slice(0, 4);
+    if (!groups.has(year)) groups.set(year, []);
+    groups.get(year).push(album);
+  });
+
+  groups.forEach((albums, year) => {
+    const total = albums.reduce((sum, album) => sum + album.photos.length, 0);
+    const group = document.createElement('div');
+    group.className = 'timeline-year';
+
+    const label = document.createElement('p');
+    label.className = 'timeline-year-label';
+    const yearText = document.createElement('span');
+    yearText.textContent = year;
+    const countText = document.createElement('span');
+    countText.textContent = total.toLocaleString();
+    label.append(yearText, countText);
+
+    const months = document.createElement('div');
+    months.className = 'timeline-months';
+    albums.forEach(album => months.append(makeTimelineMonth(album)));
+
+    group.append(label, months);
+    fragment.append(group);
+  });
+
+  const undated = albumMap.get('undated');
+  if (undated) {
+    const group = document.createElement('div');
+    group.className = 'timeline-year timeline-year--undated';
+
+    const label = document.createElement('p');
+    label.className = 'timeline-year-label';
+    const labelText = document.createElement('span');
+    labelText.textContent = 'Unsorted';
+    const countText = document.createElement('span');
+    countText.textContent = undated.photos.length.toLocaleString();
+    label.append(labelText, countText);
+
+    const months = document.createElement('div');
+    months.className = 'timeline-months';
+    months.append(makeTimelineMonth(undated));
+
+    group.append(label, months);
+    fragment.append(group);
+  }
+
+  els.timeline.replaceChildren(fragment);
+  syncTimeline();
+}
+
+function syncTimeline() {
+  const match = location.hash.match(/^#album\/([^/]+)$/);
+  let id = null;
+  if (match) {
+    try {
+      id = decodeURIComponent(match[1]);
+    } catch {
+      id = match[1];
+    }
+  }
+  els.navHome.classList.toggle('is-active', !id);
+  els.navFavorites.classList.toggle('is-active', id === 'favorites');
+  els.timeline.querySelectorAll('.timeline-month').forEach(link => {
+    link.classList.toggle('is-active', link.dataset.album === id);
+  });
+}
+
+function renderRecent() {
+  const dated = photos.filter(photo => photo.date);
+  const recent = (dated.length ? dated : photos).slice(0, 14);
+  const fragment = document.createDocumentFragment();
+
+  recent.forEach((photo, index) => {
+    const thumb = document.createElement('button');
+    thumb.type = 'button';
+    thumb.className = 'recent-thumb';
+    thumb.setAttribute('aria-label', `Open photo from ${prettyDate(photo)}`);
+
+    const img = document.createElement('img');
+    img.src = photo.src;
+    img.alt = '';
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.addEventListener('error', () => thumb.remove(), { once: true });
+
+    thumb.append(img);
+    thumb.addEventListener('click', () => openLightbox(recent, index));
+    fragment.append(thumb);
+  });
+
+  els.recentStrip.replaceChildren(fragment);
+  els.recentSection.hidden = recent.length === 0;
 }
 
 /* ——— Album index ——— */
@@ -213,16 +440,13 @@ function renderAlbums() {
 }
 
 function renderLanding() {
-  const earliest = photos.filter(photo => photo.date).at(-1);
-  els.headerCount.textContent = photos.length.toLocaleString();
-  els.headerAlbums.textContent = albumList.length.toLocaleString();
+  els.navAlbumCount.textContent = albumList.length.toLocaleString();
   els.favoriteCount.textContent = favorites.size.toLocaleString();
-  els.statPhotos.textContent = photos.length.toLocaleString();
-  els.statAlbums.textContent = albumList.length.toLocaleString();
-  els.statSince.textContent = earliest ? String(earliest.date.getFullYear()) : '—';
   els.albumGrid.hidden = photos.length === 0;
   els.landingEmpty.hidden = photos.length !== 0;
   if (photos.length) renderAlbums();
+  renderTimeline();
+  renderRecent();
 }
 
 /* ——— Photo cards ——— */
@@ -261,7 +485,14 @@ function makePhotoCard(photo, list, index) {
   updateFavoriteButton(favorite, photo.name);
   meta.append(date, favorite);
 
-  card.append(img, hit, meta);
+  const badge = document.createElement('span');
+  badge.className = 'photo-note-badge';
+  badge.setAttribute('aria-hidden', 'true');
+  badge.title = 'Has a note';
+  badge.textContent = '✎';
+  badge.hidden = !noteFor(photo.name);
+
+  card.append(img, hit, meta, badge);
   return card;
 }
 
@@ -330,9 +561,11 @@ function openAlbumById(id) {
   if (!data) {
     history.replaceState(null, '', '#/');
     closeAlbum();
+    syncTimeline();
     return;
   }
   if (els.dialog.open) els.dialog.close();
+  noteEditing = false;
   currentAlbum = { id, list: data.photos, shown: 0 };
   els.albumView.hidden = false;
   document.body.classList.add('album-open');
@@ -364,6 +597,7 @@ function route() {
   const match = location.hash.match(/^#album\/([^/]+)$/);
   if (!match) {
     closeAlbum();
+    syncTimeline();
     return;
   }
   let id = match[1];
@@ -373,6 +607,7 @@ function route() {
     /* keep the raw value */
   }
   openAlbumById(id);
+  syncTimeline();
 }
 
 /* ——— Lightbox ——— */
@@ -380,6 +615,7 @@ function route() {
 function renderLightbox() {
   const photo = lbList[lbIndex];
   if (!photo) return;
+  noteEditing = false;
   els.lightboxImage.src = photo.src;
   els.lightboxImage.alt = `A memory from ${prettyDate(photo)}`;
   els.lightboxCaption.textContent = prettyDate(photo);
@@ -387,6 +623,7 @@ function renderLightbox() {
   els.downloadPhoto.href = photo.src;
   els.downloadPhoto.download = photo.name;
   updateFavoriteButton(els.lightboxFavorite, photo.name);
+  syncNoteUI();
 }
 
 function openLightbox(list, index, autoplay = false) {
@@ -427,6 +664,14 @@ function stopSlideshow() {
 
 /* ——— Search ——— */
 
+function setSearchMode(active) {
+  els.timelineSection.hidden = active;
+  els.timelineSection.hidden = active;
+  els.recentSection.hidden = active || photos.length === 0;
+  els.albumsSection.hidden = active;
+  els.searchSection.hidden = !active;
+}
+
 function renderSearchPage() {
   const end = Math.min(searchShown + SEARCH_PAGE, searchResults.length);
   const fragment = document.createDocumentFragment();
@@ -446,10 +691,9 @@ function runSearch() {
   if (!active) {
     if (searchActive) {
       searchActive = false;
-      els.searchSection.hidden = true;
-      els.albumsSection.hidden = false;
       els.searchGrid.replaceChildren();
       searchResults = [];
+      setSearchMode(false);
       if (photos.length) renderAlbums();
     }
     return;
@@ -457,11 +701,11 @@ function runSearch() {
 
   const firstOpen = !searchActive;
   searchActive = true;
-  els.albumsSection.hidden = true;
-  els.searchSection.hidden = false;
+  setSearchMode(true);
   const needle = query.toLowerCase();
   searchResults = photos.filter(photo => {
-    const haystack = `${photo.name} ${prettyDate(photo)} ${photo.date ? `${MONTH_NAMES.format(photo.date)} ${photo.date.getFullYear()}` : ''}`.toLowerCase();
+    const note = noteFor(photo.name);
+    const haystack = `${photo.name} ${prettyDate(photo)} ${photo.date ? `${MONTH_NAMES.format(photo.date)} ${photo.date.getFullYear()}` : ''} ${note}`.toLowerCase();
     return haystack.includes(needle);
   });
   searchShown = 0;
@@ -472,6 +716,20 @@ function runSearch() {
     : `Nothing for “${query}”`;
   renderSearchPage();
   if (firstOpen) els.searchSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function leaveAlbumForSearch() {
+  if (!currentAlbum) return;
+  history.replaceState(null, '', '#/');
+  closeAlbum();
+  syncTimeline();
+}
+
+function focusSearch() {
+  if (els.dialog.open) els.dialog.close();
+  leaveAlbumForSearch();
+  els.searchInput.focus();
+  els.searchInput.select();
 }
 
 /* ——— Photo loading ——— */
@@ -492,6 +750,7 @@ function showPhotos(items, objectUrls = []) {
   renderLanding();
   applyDensity();
   runSearch();
+  if (!searchActive) setSearchMode(false);
   route();
   window.scrollTo({ top: 0, behavior: 'auto' });
 }
@@ -501,6 +760,15 @@ function showLoadError(message) {
   els.albumGrid.hidden = true;
   els.landingEmpty.hidden = false;
   els.landingEmptyText.textContent = message;
+  els.timeline.replaceChildren();
+  els.navAlbumCount.textContent = '—';
+  els.timelineSection.hidden = true;
+  els.albumsSection.hidden = false;
+  els.searchSection.hidden = true;
+  els.recentSection.hidden = true;
+  searchActive = false;
+  searchResults = [];
+  els.searchGrid.replaceChildren();
 }
 
 async function discoverPhotos() {
@@ -532,6 +800,7 @@ document.querySelectorAll('.density-button').forEach(button => button.addEventLi
 }));
 
 els.searchInput.addEventListener('input', () => {
+  leaveAlbumForSearch();
   clearTimeout(searchTimer);
   searchTimer = setTimeout(runSearch, 120);
 });
@@ -551,10 +820,14 @@ els.lbClose.addEventListener('click', () => els.dialog.close());
 els.lbPrev.addEventListener('click', () => stepPhoto(-1));
 els.lbNext.addEventListener('click', () => stepPhoto(1));
 els.lbStage.addEventListener('click', event => {
-  if (event.target === els.lbStage || event.target.classList.contains('lb-figure')) els.dialog.close();
+  if (event.target === els.lbStage || event.target.classList.contains('lb-frame')) els.dialog.close();
 });
 els.dialog.addEventListener('click', event => { if (event.target === els.dialog) els.dialog.close(); });
-els.dialog.addEventListener('close', stopSlideshow);
+els.dialog.addEventListener('close', () => {
+  noteEditing = false;
+  stopSlideshow();
+});
+els.dialog.addEventListener('cancel', () => { noteEditing = false; });
 
 els.lightboxFavorite.addEventListener('click', () => {
   const photo = lbList[lbIndex];
@@ -563,6 +836,14 @@ els.lightboxFavorite.addEventListener('click', () => {
 
 els.slideshowToggle.addEventListener('click', () => {
   slideshowTimer ? stopSlideshow() : startSlideshow();
+});
+
+els.noteEdit.addEventListener('click', startNoteEdit);
+els.noteCancel.addEventListener('click', stopNoteEdit);
+els.noteRemove.addEventListener('click', removeNote);
+els.noteForm.addEventListener('submit', event => {
+  event.preventDefault();
+  saveNote();
 });
 
 document.querySelectorAll('[data-go-home]').forEach(button => button.addEventListener('click', () => {
@@ -603,19 +884,18 @@ els.folderInput.addEventListener('change', () => {
 document.addEventListener('keydown', event => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
     event.preventDefault();
-    if (currentAlbum) location.hash = '#/';
-    window.setTimeout(() => {
-      els.searchInput.focus();
-      els.searchInput.select();
-    }, currentAlbum ? 60 : 0);
+    focusSearch();
     return;
   }
   if (els.dialog.open) {
-    if (event.key === 'ArrowRight') { event.preventDefault(); stepPhoto(1); }
-    if (event.key === 'ArrowLeft') { event.preventDefault(); stepPhoto(-1); }
+    const typing = event.target instanceof Element && event.target.closest('textarea, input');
+    if (!typing && event.key === 'ArrowRight') { event.preventDefault(); stepPhoto(1); }
+    if (!typing && event.key === 'ArrowLeft') { event.preventDefault(); stepPhoto(-1); }
     return;
   }
-  if (event.key === 'Escape' && currentAlbum) location.hash = '#/';
+  if (event.key === 'Escape') {
+    if (currentAlbum) location.hash = '#/';
+  }
 });
 
 window.addEventListener('hashchange', route);

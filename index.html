@@ -9,43 +9,63 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=5">
-  <script src="script.js?v=5" defer></script>
+  <link rel="stylesheet" href="style.css?v=10">
+  <script src="script.js?v=10" defer></script>
 </head>
 <body>
-  <header class="site-header">
-    <a class="brand" href="#/" aria-label="Our Little Moments — all albums">
-      <span class="brand-mark">♡</span>
-      <span class="brand-name">our little moments</span>
-    </a>
-    <p class="header-meta"><span id="header-count">—</span> moments<span class="header-dot">·</span><span id="header-albums">—</span> albums</p>
-    <div class="header-tools">
-      <label class="search-field">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="#/" aria-label="Our Little Moments — all albums">
+        <span class="brand-mark" aria-hidden="true">♡</span>
+        <span class="brand-text">
+          <span class="brand-name">our little moments</span>
+          <span class="brand-tag">a personal photo archive</span>
+        </span>
+      </a>
+
+      <nav class="top-nav" aria-label="Browse">
+        <a class="nav-link" id="nav-home" href="#/">
+          <span class="nav-icon" aria-hidden="true">▦</span>
+          <span>All albums</span>
+          <span class="nav-count" id="nav-album-count">—</span>
+        </a>
+        <a class="nav-link" id="nav-favorites" href="#album/favorites">
+          <span class="nav-icon nav-icon-heart" aria-hidden="true">♡</span>
+          <span>Favorites</span>
+          <span class="nav-count" id="favorite-count">0</span>
+        </a>
+      </nav>
+
+      <label class="search-field topbar-search">
         <span class="search-icon" aria-hidden="true">⌕</span>
         <span class="sr-only">Search all photos</span>
-        <input id="search-input" type="search" placeholder="Search the collection…" autocomplete="off">
+        <input id="search-input" type="search" placeholder="Search moments, months or notes…" autocomplete="off">
         <kbd>⌘K</kbd>
       </label>
-      <a class="pill-button" href="#album/favorites">
-        <span class="pill-heart" aria-hidden="true">♡</span>
-        <span class="pill-label">Favorites</span>
-        <span class="pill-count" id="favorite-count">0</span>
-      </a>
+
+      <button id="choose-folder" class="topbar-button" type="button" aria-label="Load a local photo folder">
+        <span aria-hidden="true">↥</span>
+        <span class="topbar-button-label">Load folder</span>
+      </button>
+      <input id="folder-input" type="file" accept="image/*" webkitdirectory directory multiple hidden>
     </div>
   </header>
 
-  <main id="landing">
-    <section class="intro" aria-labelledby="intro-title">
-      <p class="eyebrow"><span class="eyebrow-line"></span> A personal photo archive</p>
-      <h1 id="intro-title">Little moments,<br><em>kept together.</em></h1>
-      <div class="intro-foot">
-        <p class="intro-note">The ordinary afternoons, the unreasonable smiles and all the lovely things in between — sorted into albums, kept close to the heart.</p>
-        <dl class="intro-stats">
-          <div><dt>Moments</dt><dd id="stat-photos">—</dd></div>
-          <div><dt>Albums</dt><dd id="stat-albums">—</dd></div>
-          <div><dt>Since</dt><dd id="stat-since">—</dd></div>
-        </dl>
+  <main id="landing" class="main">
+    <section class="timeline-section" aria-labelledby="timeline-title">
+      <div class="section-bar section-bar--tight">
+        <h2 id="timeline-title">Timeline</h2>
+        <p class="section-note">Every month, in order.<br>Jump straight into a memory.</p>
       </div>
+      <div id="timeline" class="timeline"></div>
+    </section>
+
+    <section id="recent-section" class="recent-section" aria-labelledby="recent-title" hidden>
+      <div class="section-bar section-bar--tight">
+        <h2 id="recent-title">Just in</h2>
+        <p class="section-note">The newest additions, straight from the camera roll.</p>
+      </div>
+      <div id="recent-strip" class="recent-strip"></div>
     </section>
 
     <section id="albums-section" class="albums-section" aria-labelledby="albums-title">
@@ -73,7 +93,7 @@
       <div id="search-grid" class="photo-grid"></div>
       <div id="search-empty" class="landing-empty" hidden>
         <span class="landing-empty-heart">♡</span>
-        <p>Nothing matched that search. Try a month, a year, or part of a filename.</p>
+        <p>Nothing matched that search. Try a month, a year, a filename — or a note you wrote.</p>
       </div>
       <div class="load-more-wrap"><button id="search-more" class="load-more" type="button" hidden>Show more <span>↓</span></button></div>
     </section>
@@ -85,9 +105,7 @@
       </div>
       <p>Here’s to all the little things that make life ours.</p>
       <div class="footer-tools">
-        <button id="choose-folder" class="text-button" type="button">Load a local folder</button>
-        <input id="folder-input" type="file" accept="image/*" webkitdirectory directory multiple hidden>
-        <a href="#/" class="footer-top">Back to the top ↑</a>
+        <a href="#/" class="footer-top">Back to top ↑</a>
       </div>
     </footer>
   </main>
@@ -124,11 +142,29 @@
     <button class="lb-nav lb-prev" type="button" aria-label="Previous photo">←</button>
     <div class="lb-stage">
       <figure class="lb-figure">
-        <img id="lightbox-image" alt="">
+        <div class="lb-frame"><img id="lightbox-image" alt=""></div>
         <figcaption class="lb-caption">
           <span id="lightbox-caption"></span>
           <span id="lightbox-index"></span>
         </figcaption>
+        <div class="lb-note">
+          <div class="lb-note-head">
+            <span class="lb-note-title"><span aria-hidden="true">✎</span> Note</span>
+            <span class="lb-note-actions">
+              <button id="note-edit" class="lb-note-link" type="button">Add a note</button>
+              <button id="note-remove" class="lb-note-link lb-note-remove" type="button" hidden>Remove</button>
+            </span>
+          </div>
+          <p id="note-text" class="lb-note-text" hidden></p>
+          <form id="note-form" class="lb-note-form" hidden>
+            <label class="sr-only" for="note-input">Note for this photo</label>
+            <textarea id="note-input" rows="2" maxlength="280" placeholder="Write something about this moment…"></textarea>
+            <div class="lb-note-form-actions">
+              <button type="submit" class="lb-note-save">Save note</button>
+              <button id="note-cancel" class="lb-note-cancel" type="button">Cancel</button>
+            </div>
+          </form>
+        </div>
       </figure>
     </div>
     <button class="lb-nav lb-next" type="button" aria-label="Next photo">→</button>
