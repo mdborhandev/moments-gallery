@@ -98,6 +98,40 @@ let searchShown = 0;
 let searchActive = false;
 let photoObjectUrls = [];
 let density = localStorage.getItem(DENSITY_KEY) === 'compact' ? 'compact' : 'roomy';
+let albumsRevealed = false;
+
+/* ——— Motion ——— */
+
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+const revealObserver = 'IntersectionObserver' in window
+  ? new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('is-visible');
+        revealObserver.unobserve(entry.target);
+      });
+    }, { rootMargin: '0px 0px -6% 0px', threshold: 0.05 })
+  : null;
+
+function watchReveal(element, delay = 0) {
+  if (!element) return;
+  if (reduceMotion.matches || !revealObserver) {
+    element.classList.add('is-visible');
+    return;
+  }
+  element.style.setProperty('--reveal-delay', `${delay}ms`);
+  element.classList.add('will-reveal');
+  revealObserver.observe(element);
+}
+
+function pop(element) {
+  if (!element || reduceMotion.matches || typeof element.animate !== 'function') return;
+  element.animate(
+    [{ transform: 'scale(1)' }, { transform: 'scale(1.12)' }, { transform: 'scale(1)' }],
+    { duration: 340, easing: 'cubic-bezier(.2, .7, .2, 1)' }
+  );
+}
 
 /* ——— Dates & data ——— */
 
@@ -219,6 +253,12 @@ function saveNote() {
   noteEditing = false;
   refreshNoteBadges();
   syncNoteUI();
+  if (text && !reduceMotion.matches && typeof els.noteText.animate === 'function') {
+    els.noteText.animate(
+      [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }],
+      { duration: 280, easing: 'cubic-bezier(.2, .7, .2, 1)' }
+    );
+  }
   if (searchActive) runSearch();
 }
 
@@ -235,11 +275,12 @@ function removeNote() {
 
 /* ——— Timeline ——— */
 
-function makeTimelineMonth(album) {
+function makeTimelineMonth(album, index = 0) {
   const link = document.createElement('a');
   link.className = 'timeline-month';
   link.href = `#album/${encodeURIComponent(album.id)}`;
   link.dataset.album = album.id;
+  link.style.setProperty('--i', index);
 
   const dot = document.createElement('span');
   dot.className = 'timeline-dot';
@@ -269,6 +310,7 @@ function renderTimeline() {
     groups.get(year).push(album);
   });
 
+  let monthIndex = 0;
   groups.forEach((albums, year) => {
     const total = albums.reduce((sum, album) => sum + album.photos.length, 0);
     const group = document.createElement('div');
@@ -284,7 +326,7 @@ function renderTimeline() {
 
     const months = document.createElement('div');
     months.className = 'timeline-months';
-    albums.forEach(album => months.append(makeTimelineMonth(album)));
+    albums.forEach(album => months.append(makeTimelineMonth(album, monthIndex++)));
 
     group.append(label, months);
     fragment.append(group);
@@ -305,13 +347,14 @@ function renderTimeline() {
 
     const months = document.createElement('div');
     months.className = 'timeline-months';
-    months.append(makeTimelineMonth(undated));
+    months.append(makeTimelineMonth(undated, 0));
 
     group.append(label, months);
     fragment.append(group);
   }
 
   els.timeline.replaceChildren(fragment);
+  [...els.timeline.children].forEach((group, index) => watchReveal(group, index * 90));
   syncTimeline();
 }
 
@@ -341,6 +384,7 @@ function renderRecent() {
     const thumb = document.createElement('button');
     thumb.type = 'button';
     thumb.className = 'recent-thumb';
+    thumb.style.setProperty('--i', index);
     thumb.setAttribute('aria-label', `Open photo from ${prettyDate(photo)}`);
 
     const img = document.createElement('img');
@@ -437,6 +481,11 @@ function renderAlbums() {
     favorite: false,
   })));
   els.albumGrid.replaceChildren(fragment);
+  [...els.albumGrid.children].forEach((card, index) => {
+    if (albumsRevealed) card.classList.add('is-visible');
+    else watchReveal(card, Math.min(index, 6) * 45);
+  });
+  albumsRevealed = true;
 }
 
 function renderLanding() {
@@ -520,6 +569,7 @@ function updateFavoriteButton(button, name) {
 
 function updateFavoriteBadge() {
   els.favoriteCount.textContent = favorites.size.toLocaleString();
+  pop(els.favoriteCount);
 }
 
 function toggleFavorite(photo) {
@@ -624,6 +674,12 @@ function renderLightbox() {
   els.downloadPhoto.download = photo.name;
   updateFavoriteButton(els.lightboxFavorite, photo.name);
   syncNoteUI();
+  if (!reduceMotion.matches && typeof els.lightboxImage.animate === 'function') {
+    els.lightboxImage.animate(
+      [{ opacity: 0.25, transform: 'scale(.985)' }, { opacity: 1, transform: 'none' }],
+      { duration: 300, easing: 'cubic-bezier(.2, .7, .2, 1)' }
+    );
+  }
 }
 
 function openLightbox(list, index, autoplay = false) {
@@ -908,4 +964,7 @@ sentinelObserver.observe(els.albumSentinel);
 
 applyDensity();
 updateFavoriteBadge();
+document.querySelectorAll('.section-bar, .timeline, .site-footer').forEach((element, index) => {
+  watchReveal(element, Math.min(index, 8) * 50);
+});
 discoverPhotos();
