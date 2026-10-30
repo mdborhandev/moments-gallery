@@ -3,75 +3,140 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#141216">
-  <meta name="description" content="A little collection of our favorite moments, kept close to the heart.">
-  <title>Our Little Moments — a photo journal</title>
+  <meta name="theme-color" content="#f4efe6">
+  <meta name="description" content="A personal photo archive — every little moment, kept together in albums.">
+  <title>Our Little Moments — a photo archive</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2">
-  <script src="script.js?v=3" defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=4">
+  <script src="script.js?v=4" defer></script>
 </head>
 <body>
-  <header class="topbar">
-    <a class="brand" href="#home" aria-label="Our Little Moments home"><span class="brand-mark">♡</span><span>our little moments</span></a>
-    <a class="top-link" href="#gallery">The photo journal <span>↗</span></a>
+  <header class="site-header">
+    <a class="brand" href="#/" aria-label="Our Little Moments — all albums">
+      <span class="brand-mark">♡</span>
+      <span class="brand-name">our little moments</span>
+    </a>
+    <p class="header-meta"><span id="header-count">—</span> moments<span class="header-dot">·</span><span id="header-albums">—</span> albums</p>
+    <div class="header-tools">
+      <label class="search-field">
+        <span class="search-icon" aria-hidden="true">⌕</span>
+        <span class="sr-only">Search all photos</span>
+        <input id="search-input" type="search" placeholder="Search the collection…" autocomplete="off">
+        <kbd>⌘K</kbd>
+      </label>
+      <a class="pill-button" href="#album/favorites">
+        <span class="pill-heart" aria-hidden="true">♡</span>
+        <span class="pill-label">Favorites</span>
+        <span class="pill-count" id="favorite-count">0</span>
+      </a>
+    </div>
   </header>
 
-  <main id="home">
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="hero-copy">
-        <p class="eyebrow"><span class="eyebrow-line"></span> A collection made with love</p>
-        <h1 id="hero-title">Little moments,<br><em>forever ours.</em></h1>
-        <p class="hero-note">The ordinary days, the big smiles, and all the lovely things in between.</p>
-        <a class="hero-button" href="#gallery">Wander through our memories <span>↓</span></a>
-        <div class="hero-caption"><span class="caption-heart">♥</span> Every picture holds a piece of us.</div>
+  <main id="landing">
+    <section class="intro" aria-labelledby="intro-title">
+      <p class="eyebrow"><span class="eyebrow-line"></span> A personal photo archive</p>
+      <h1 id="intro-title">Little moments,<br><em>kept together.</em></h1>
+      <div class="intro-foot">
+        <p class="intro-note">The ordinary afternoons, the unreasonable smiles and all the lovely things in between — sorted into albums, kept close to the heart.</p>
+        <dl class="intro-stats">
+          <div><dt>Moments</dt><dd id="stat-photos">—</dd></div>
+          <div><dt>Albums</dt><dd id="stat-albums">—</dd></div>
+          <div><dt>Since</dt><dd id="stat-since">—</dd></div>
+        </dl>
       </div>
-      <div class="hero-art" aria-label="A few favorite snapshots">
-        <div class="sun-wash"></div>
-        <figure class="polaroid polaroid-back"><img src="pic/IMG-20251129-WA0011.jpg" alt="A moment together" fetchpriority="high"><figcaption>my favorite place</figcaption></figure>
-        <figure class="polaroid polaroid-front"><img src="pic/8b391e2df3a2ba6ab32cfd8fcffc0aa9.jpg" alt="A favorite memory" fetchpriority="high"><figcaption>just us ♡</figcaption></figure>
-        <span class="doodle doodle-one">✳</span><span class="doodle doodle-two">♡</span><span class="doodle doodle-three">✿</span>
-        <div class="tape"></div>
-      </div>
-      <div class="hero-bottom"><span>SCROLL A LITTLE</span><span class="scroll-line"></span><span>THERE’S SO MUCH TO REMEMBER</span></div>
     </section>
 
-    <section id="gallery" class="gallery-section" aria-labelledby="gallery-title">
-      <div class="section-heading">
-        <div><p class="eyebrow"><span class="eyebrow-line"></span> The keepsake collection</p><h2 id="gallery-title">A thousand <em>tiny treasures</em></h2></div>
-        <p class="section-aside">Collected with love,<br>looked back on with a smile.</p>
+    <section id="albums-section" class="albums-section" aria-labelledby="albums-title">
+      <div class="section-bar">
+        <h2 id="albums-title">The albums</h2>
+        <p class="section-note">Pick a month and wander in.<br>Every cover is a doorway.</p>
       </div>
-
-      <div class="gallery-toolbar">
-        <div class="filters" role="group" aria-label="Filter photos">
-          <button class="filter-button is-active" data-filter="all" type="button">All moments <span class="filter-count" id="all-count"></span></button>
-          <button class="filter-button" data-filter="favorites" type="button">♡ Favorites</button>
-          <label class="select-wrap"><span class="sr-only">Filter by year</span><select id="year-filter"><option value="all">Every year</option></select><span class="select-arrow">⌄</span></label>
-        </div>
-        <label class="search-box"><span aria-hidden="true">⌕</span><span class="sr-only">Search photos</span><input id="search-input" type="search" placeholder="Find a moment…" autocomplete="off"><kbd>Ctrl K</kbd></label>
+      <div id="album-grid" class="album-grid">
+        <div class="album-skeleton"></div>
+        <div class="album-skeleton"></div>
+        <div class="album-skeleton"></div>
       </div>
-      <div class="view-toolbar">
-        <label class="sort-control">Sort <select id="sort-filter" aria-label="Sort photos"><option value="random">Random order</option><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="name">Filename</option></select></label>
-        <div class="density-control" role="group" aria-label="Gallery density"><span>View</span><button type="button" data-density="roomy" class="density-button is-active" aria-label="Roomy photo grid" title="Roomy">▦</button><button type="button" data-density="compact" class="density-button" aria-label="Compact photo grid" title="Compact">▤</button></div>
+      <div id="landing-empty" class="landing-empty" hidden>
+        <span class="landing-empty-heart">♡</span>
+        <p id="landing-empty-text">No photos were found in <code>pic/</code>.</p>
+        <button id="landing-empty-button" class="text-button" type="button">Choose a photo folder</button>
       </div>
-      <div class="gallery-meta"><span id="result-count">Looking for photos in pic/…</span><span class="gallery-actions"><span class="meta-decoration">♡ &nbsp; saved in our hearts</span><button id="choose-folder" class="folder-picker" type="button">Choose photo folder</button><input id="folder-input" type="file" accept="image/*" webkitdirectory directory multiple hidden></span></div>
-      <div id="photo-grid" class="photo-grid" aria-live="polite"></div>
-      <div id="empty-state" class="empty-state" hidden><span>♡</span><p>No moments found just yet.</p><button id="clear-filters" type="button">Show every photo</button></div>
-      <div class="load-more-wrap"><button id="load-more" class="load-more" type="button">Show a few more <span>↓</span></button></div>
     </section>
 
-    <section class="closing-note"><span class="closing-heart">♡</span><p>Here’s to all the little things<br><em>that make life ours.</em></p><span class="closing-sparkle">✳</span></section>
+    <section id="search-section" class="search-section" aria-labelledby="search-title" hidden>
+      <div class="section-bar">
+        <h2 id="search-title">Search results</h2>
+        <p class="section-note" id="search-note">Looking…</p>
+      </div>
+      <div id="search-grid" class="photo-grid"></div>
+      <div id="search-empty" class="landing-empty" hidden>
+        <span class="landing-empty-heart">♡</span>
+        <p>Nothing matched that search. Try a month, a year, or part of a filename.</p>
+      </div>
+      <div class="load-more-wrap"><button id="search-more" class="load-more" type="button" hidden>Show more <span>↓</span></button></div>
+    </section>
+
+    <footer class="site-footer">
+      <div class="footer-brand">
+        <span class="brand-mark">♡</span>
+        <span>our little moments</span>
+      </div>
+      <p>Here’s to all the little things that make life ours.</p>
+      <div class="footer-tools">
+        <button id="choose-folder" class="text-button" type="button">Load a local folder</button>
+        <input id="folder-input" type="file" accept="image/*" webkitdirectory directory multiple hidden>
+        <a href="#/" class="footer-top">Back to the top ↑</a>
+      </div>
+    </footer>
   </main>
-  <footer><a class="brand footer-brand" href="#home"><span class="brand-mark">♡</span><span>our little moments</span></a><span>A little love, kept forever.</span><a href="#home" class="back-top">Back to the top ↑</a></footer>
+
+  <section id="album-view" class="album-view" aria-labelledby="album-title" hidden>
+    <header class="album-bar">
+      <button id="album-back" class="album-back" type="button"><span aria-hidden="true">←</span> All albums</button>
+      <div class="album-heading">
+        <p class="album-kicker" id="album-kicker">Album</p>
+        <h2 id="album-title">—</h2>
+      </div>
+      <div class="album-tools">
+        <span class="album-count" id="album-count">—</span>
+        <div class="density-control" role="group" aria-label="Photo size">
+          <button type="button" data-density="roomy" class="density-button is-active" aria-label="Large photos" title="Large photos">▦</button>
+          <button type="button" data-density="compact" class="density-button" aria-label="Small photos" title="Small photos">▤</button>
+        </div>
+        <button id="album-slideshow" class="album-tool-button" type="button"><span aria-hidden="true">▶</span> Slideshow</button>
+      </div>
+    </header>
+    <div id="album-scroll" class="album-scroll">
+      <div id="album-photos" class="photo-grid"></div>
+      <div id="album-empty" class="album-empty" hidden>
+        <span>♡</span>
+        <p id="album-empty-text">No moments here yet.</p>
+        <button class="text-button" type="button" data-go-home>Back to the albums</button>
+      </div>
+      <div id="album-sentinel" class="album-sentinel" aria-hidden="true"></div>
+    </div>
+  </section>
 
   <dialog id="lightbox" class="lightbox" aria-label="Photo viewer">
-    <button class="lightbox-close" type="button" aria-label="Close photo viewer">×</button>
-    <button class="lightbox-nav lightbox-prev" type="button" aria-label="Previous photo">←</button>
-    <figure class="lightbox-figure"><img id="lightbox-image" alt=""><figcaption><span id="lightbox-caption"></span><span id="lightbox-index"></span></figcaption></figure>
-    <button class="lightbox-nav lightbox-next" type="button" aria-label="Next photo">→</button>
-    <button class="lightbox-favorite" type="button" aria-label="Save as favorite">♡</button>
-    <div class="lightbox-tools"><button id="slideshow-toggle" type="button">▶ Slideshow</button><a id="download-photo" download>↓ Download</a></div>
+    <button class="lb-close" type="button" aria-label="Close photo viewer">×</button>
+    <button class="lb-nav lb-prev" type="button" aria-label="Previous photo">←</button>
+    <div class="lb-stage">
+      <figure class="lb-figure">
+        <img id="lightbox-image" alt="">
+        <figcaption class="lb-caption">
+          <span id="lightbox-caption"></span>
+          <span id="lightbox-index"></span>
+        </figcaption>
+      </figure>
+    </div>
+    <button class="lb-nav lb-next" type="button" aria-label="Next photo">→</button>
+    <div class="lb-tools">
+      <button id="lightbox-favorite" class="lb-favorite" type="button" aria-label="Save as favorite">♡</button>
+      <button id="slideshow-toggle" type="button">▶ Slideshow</button>
+      <a id="download-photo" download>↓ Download</a>
+    </div>
   </dialog>
 </body>
 </html>
